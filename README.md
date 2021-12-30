@@ -1,5 +1,7 @@
 # Book management
 
+English | [中文](README_cn.md)
+
 ## Required
 - Rust
 - MySQL 5.7
