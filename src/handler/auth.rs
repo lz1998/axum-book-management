@@ -1,8 +1,10 @@
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts, TypedHeader},
+    extract::TypedHeader,
     headers::{authorization::Bearer, Authorization},
 };
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -29,18 +31,19 @@ pub fn generate_jwt(claims: &Claims) -> anyhow::Result<String> {
 
 /// defines how to extract the claims from the request
 #[async_trait]
-impl<B> FromRequest<B> for Claims
+impl<B> FromRequestParts<B> for Claims
 where
-    B: Send,
+    B: Send + Sync,
 {
     type Rejection = AuthError;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) =
-            TypedHeader::<Authorization<Bearer>>::from_request(req)
+            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
                 .map_err(|_| AuthError)?;
+
         // Decode the user data
         let token_data = decode::<Claims>(
             bearer.token(),
