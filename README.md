@@ -26,11 +26,18 @@ English | [中文](README_cn.md)
 - /book/delete
 
 ## Practice
-### Replace StatusCode with CustomError
-1. Define `CustomError` enum with [thiserror](https://github.com/dtolnay/thiserror).
-2. Implement `IntoResponse` for `CustomError`. Example: [AuthError](https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L142).
-3. Replace `Result<Json<T>, StatusCode>` with `Result<Json<T>, CustomError>` in handlers.
-4. Convert errors to `CustomError` in `map_err`.
+### Use Redis as cache
+1. Add [redis](https://github.com/redis-rs/redis-rs) with feature `tokio-comp` to Cargo.toml
+> `async` is necessary, because if you don't use `async`, the **system thread** will block when the command is executing, and it will not handle other tasks.
+2. Add `redis::RedisError` in src/error.rs
+```rust
+    #[error("redis_error: {0}")]
+    Redis(#[from] redis::RedisError),
+```
+> With `#[from]`, [thiserror](https://github.com/dtolnay/thiserror) will generate `impl From<redis::RedisError> for CustomError` automatically, and you can return error with `?` or `.map_err(Into::into)?` when the return type is `CustomResult<T>`.   
+> Without `#[from]`, you need to convert error by yourself `.map_err(|e| CustomError::Redis(e))` or `.map_err(CustomError::Redis)`
+3. Read code in [redis/examples](https://github.com/redis-rs/redis-rs/blob/main/redis/examples/async-await.rs).
+4. Write your cache code.
 
 ### Global 404 handler
 1. Add [Global-404-handler](https://github.com/tokio-rs/axum/tree/main/examples/global-404-handler) in `src/bin/server.rs`.
