@@ -4,6 +4,7 @@ use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 
 use crate::database::orm::get_conn;
+use crate::error::CustomResult;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "book")]
@@ -27,45 +28,43 @@ impl RelationTrait for Relation {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-pub async fn create(name: &str, operator: &str) -> anyhow::Result<()> {
+pub async fn create(name: &str, operator: &str) -> CustomResult<()> {
     let conn = get_conn().await;
     let model = ActiveModel {
         name: Set(name.into()),
         operator: Set(operator.into()),
         ..Default::default()
     };
-    model.insert(conn).await.map_err(|e| anyhow::anyhow!(e))?;
+    model.insert(conn).await?;
     Ok(())
 }
 
-pub async fn search(query: &str) -> anyhow::Result<Vec<Model>> {
+pub async fn search(query: &str) -> CustomResult<Vec<Model>> {
     let conn = get_conn().await;
     Entity::find()
         .filter(Column::Name.contains(query))
         .all(conn)
         .await
-        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(Into::into)
 }
 
-pub async fn update(id: i32, name: &str, operator: &str) -> anyhow::Result<()> {
+pub async fn update(id: i32, name: &str, operator: &str) -> CustomResult<()> {
     let conn = get_conn().await;
     Entity::update_many()
         .col_expr(Column::Name, Expr::value(name))
         .col_expr(Column::Operator, Expr::value(operator))
         .filter(Column::Id.eq(id))
         .exec(conn)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
+        .await?;
     Ok(())
 }
 
-pub async fn delete(id: i32) -> anyhow::Result<()> {
+pub async fn delete(id: i32) -> CustomResult<()> {
     let conn = get_conn().await;
     Entity::delete_many()
         .filter(Column::Id.eq(id))
         .exec(conn)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
+        .await?;
     Ok(())
 }
 

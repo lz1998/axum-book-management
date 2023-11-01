@@ -1,7 +1,6 @@
+use crate::error::{CustomError, CustomResult};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::{
     async_trait,
     extract::TypedHeader,
@@ -20,13 +19,13 @@ pub struct Claims {
     pub username: String,
 }
 
-pub fn generate_jwt(claims: &Claims) -> anyhow::Result<String> {
+pub fn generate_jwt(claims: &Claims) -> CustomResult<String> {
     encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
     )
-    .map_err(|e| anyhow::anyhow!(e))
+    .map_err(Into::into)
 }
 
 /// defines how to extract the claims from the request
@@ -35,14 +34,16 @@ impl<B> FromRequestParts<B> for Claims
 where
     B: Send + Sync,
 {
-    type Rejection = AuthError;
+    /// defines what to return when the request is rejected.
+    /// IntoResponse must be implemented for Rejection.
+    type Rejection = CustomError;
 
     async fn from_request_parts(parts: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) =
             TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
-                .map_err(|_| AuthError)?;
+                .map_err(|_| CustomError::AuthError)?;
 
         // Decode the user data
         let token_data = decode::<Claims>(
@@ -50,17 +51,8 @@ where
             &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
             &Validation::default(),
         )
-        .map_err(|_| AuthError)?;
+        .map_err(|_| CustomError::AuthError)?;
 
         Ok(token_data.claims)
-    }
-}
-
-/// defines what to do when the request is rejected
-pub struct AuthError;
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        StatusCode::UNAUTHORIZED.into_response()
     }
 }

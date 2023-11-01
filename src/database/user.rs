@@ -3,6 +3,7 @@ use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 
 use crate::database::orm::get_conn;
+use crate::error::CustomResult;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "user")]
@@ -23,23 +24,23 @@ impl RelationTrait for Relation {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-pub async fn create(username: &str, password: &str) -> anyhow::Result<()> {
+pub async fn create(username: &str, password: &str) -> CustomResult<()> {
     let conn = get_conn().await;
     let model = ActiveModel {
         username: Set(username.into()),
         password: Set(password.into()),
     };
-    model.insert(conn).await.map_err(|e| anyhow::anyhow!(e))?;
+    model.insert(conn).await?;
     Ok(())
 }
 
-pub async fn find(username: &str) -> anyhow::Result<Option<Model>> {
+pub async fn find(username: &str) -> CustomResult<Option<Model>> {
     let conn = get_conn().await;
     Entity::find()
         .filter(Column::Username.eq(username))
         .one(conn)
         .await
-        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(Into::into)
 }
 
 #[cfg(test)]
