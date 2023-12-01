@@ -1,8 +1,6 @@
 use crate::error::{CustomError, CustomResult};
-use axum::extract::FromRequestParts;
-use axum::http::request::Parts;
-use axum::{
-    async_trait,
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum_extra::{
     extract::TypedHeader,
     headers::{authorization::Bearer, Authorization},
 };
